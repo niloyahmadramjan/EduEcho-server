@@ -26,11 +26,23 @@ async function run() {
   try {
     // await client.connect();
     const articlesCollection = client.db("eduecho").collection("allArticles");
+    const userCollection = client.db("eduecho").collection("userInfo");
 
     app.get("/articles", async (req, res) => {
       const articles = await articlesCollection.find().toArray();
       res.send(articles);
     });
+
+    //user info collect 
+    app.post("/userinfo",async (req,res)=>{
+        const userInfo = req.body;
+        const checkExistingData = await userCollection.findOne({email : userInfo.email});
+        if(checkExistingData){
+          return res.status(200).send({message : "user already exists"})
+        }
+        const result = await userCollection.insertOne(userInfo);
+        res.send(result)
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
