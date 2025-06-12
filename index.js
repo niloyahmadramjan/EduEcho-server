@@ -12,7 +12,7 @@ app.use(cors());
 
 // MongoDB connection
 
-const uri =process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -29,20 +29,52 @@ async function run() {
     const userCollection = client.db("eduecho").collection("userInfo");
 
     app.get("/articles", async (req, res) => {
-      const articles = await articlesCollection.find().toArray();
-      res.send(articles);
+      try {
+        const articles = await articlesCollection.find().toArray();
+        res.send(articles);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to fetch articles" });
+      }
     });
 
-    //user info collect 
-    app.post("/userinfo",async (req,res)=>{
-        const userInfo = req.body;
-        const checkExistingData = await userCollection.findOne({email : userInfo.email});
-        if(checkExistingData){
-          return res.status(200).send({message : "user already exists"})
+    //user info collect
+    app.post("/userinfo", async (req, res) => {
+      const { uid, name, email, photo } = req.body;
+
+      try {
+        const existingUser = await userCollection.findOne({ uid });
+
+        if (!existingUser) {
+          const result = await userCollection.insertOne({
+            uid,
+            name,
+            email,
+            photo,
+            createdAt: new Date(),
+          });
+          res
+            .status(201)
+            .send({ message: "User created", userId: result.insertedId });
+        } else {
+          res.status(200).send({ message: "User already exists" });
         }
-        const result = await userCollection.insertOne(userInfo);
-        res.send(result)
-    })
+      } catch (error) {
+        res.status(500).send({ message: "Error saving user", error });
+      }
+    });
+
+    // user info get
+    app.get("/userinfo/:uid", async (req, res) => {
+      const uid = req.params.uid;
+      const user = await userCollection.findOne({ uid: uid });
+      if (!user) {
+        return res.status(404).send({ error: "User not found" });
+      }
+
+      res.send(user);
+    });
+
+   
 
     await client.db("admin").command({ ping: 1 });
     console.log(
