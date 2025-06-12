@@ -38,8 +38,13 @@ async function run() {
       }
     });
 
-   
-
+    // get my articles use email
+    app.get("/myArticles", async (req, res) => {
+      const userEmail = req.query.email;
+      const query = {email : userEmail};
+      const result = await articlesCollection.find(query).toArray();
+      res.send(result)
+    });
 
     //user info collect
     app.post("/userinfo", async (req, res) => {
