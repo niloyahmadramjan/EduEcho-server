@@ -28,6 +28,7 @@ async function run() {
     const articlesCollection = client.db("eduecho").collection("allArticles");
     const userCollection = client.db("eduecho").collection("userInfo");
 
+    // get all articles
     app.get("/articles", async (req, res) => {
       try {
         const articles = await articlesCollection.find().toArray();
@@ -36,6 +37,9 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch articles" });
       }
     });
+
+   
+
 
     //user info collect
     app.post("/userinfo", async (req, res) => {
@@ -74,7 +78,13 @@ async function run() {
       res.send(user);
     });
 
-   
+    // post article
+    app.post("/articles", async (req, res) => {
+      const postArticle = req.body;
+      const newArticle = { ...postArticle, createdAt: new Date() };
+      const result = await articlesCollection.insertOne(newArticle);
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
