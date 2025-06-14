@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
@@ -41,9 +41,9 @@ async function run() {
     // get my articles use email
     app.get("/myArticles", async (req, res) => {
       const userEmail = req.query.email;
-      const query = {email : userEmail};
+      const query = { email: userEmail };
       const result = await articlesCollection.find(query).toArray();
-      res.send(result)
+      res.send(result);
     });
 
     //user info collect
@@ -90,6 +90,22 @@ async function run() {
       const result = await articlesCollection.insertOne(newArticle);
       res.send(result);
     });
+
+    //update article
+    app.patch("/articles/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+      delete updateData._id;
+      const filter = { _id: new ObjectId(id) };
+      const updateArticle = {
+        $set: updateData,
+      };
+      const result = await articlesCollection.updateOne(filter, updateArticle);
+      res.send(result);
+    });
+    
+
+    
 
     await client.db("admin").command({ ping: 1 });
     console.log(
