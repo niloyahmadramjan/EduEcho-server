@@ -41,6 +41,23 @@ async function run() {
       }
     });
 
+    // Get likes grouped by articleId
+    app.get("/articles/likes", async (req, res) => {
+      try {
+        const likes = await articleLikeCollection.find().toArray();
+        const grouped = likes.reduce((acc, like) => {
+          const articleId = like.articleId;
+          if (!acc[articleId]) acc[articleId] = [];
+          acc[articleId].push(like.userUID);
+          return acc;
+        }, {});
+
+        res.send(grouped);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to fetch likes" });
+      }
+    });
+
     // get my articles use email
     app.get("/myArticles", async (req, res) => {
       const userEmail = req.query.email;
@@ -94,11 +111,40 @@ async function run() {
       res.send(result);
     });
 
-    // store articles likes
+    //  Toggle like/unlike functionality
     app.post("/articles/likes", async (req, res) => {
-      const likesInfo = req.body;
-      const result = await articleLikeCollection.insertOne(likesInfo);
-      res.send(result);
+      const { articleId, userUID, userName, userEmail, userPhoto } = req.body;
+
+      if (!articleId || !userUID) {
+        return res.status(400).send({ error: "Missing articleId or userUID" });
+      }
+
+      const existingLike = await articleLikeCollection.findOne({
+        articleId,
+        userUID,
+      });
+
+      if (existingLike) {
+        const result = await articleLikeCollection.deleteOne({
+          articleId,
+          userUID,
+        });
+        return res.send({
+          message: "Unliked",
+          deletedCount: result.deletedCount,
+        });
+      } else {
+        const likeData = {
+          articleId,
+          userUID,
+          userName,
+          userEmail,
+          userPhoto,
+          likedAt: new Date(),
+        };
+        const result = await articleLikeCollection.insertOne(likeData);
+        return res.send({ message: "Liked", insertedId: result.insertedId });
+      }
     });
 
     //update article
