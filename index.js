@@ -27,6 +27,9 @@ async function run() {
     // await client.connect();
     const articlesCollection = client.db("eduecho").collection("allArticles");
     const userCollection = client.db("eduecho").collection("userInfo");
+    const articleLikeCollection = client
+      .db("eduecho")
+      .collection("articlesLikeInfo");
 
     // get all articles
     app.get("/articles", async (req, res) => {
@@ -91,6 +94,13 @@ async function run() {
       res.send(result);
     });
 
+    // store articles likes
+    app.post("/articles/likes", async (req, res) => {
+      const likesInfo = req.body;
+      const result = await articleLikeCollection.insertOne(likesInfo);
+      res.send(result);
+    });
+
     //update article
     app.patch("/articles/:id", async (req, res) => {
       const id = req.params.id;
@@ -109,7 +119,7 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await articlesCollection.deleteOne(filter);
-      res.send(result)
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
