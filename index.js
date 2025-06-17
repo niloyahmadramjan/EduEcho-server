@@ -2,16 +2,46 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const jwt = require("jsonwebtoken"); // ✅ Added JWT
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
-// Midleware
+// Middleware
 app.use(express.json());
 app.use(cors());
 
-// MongoDB connection
+// JWT Token API (Issue Token)
+app.post("/jwt", async (req, res) => {
+  const userData = req.body;
+  const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+    expiresIn: "1h",
+  });
 
+  res.send({ token });
+});
+
+// JWT Verify Middleware
+const verifyJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden" });
+    }
+
+    req.decoded = decoded;
+    next();
+  });
+};
+
+// MongoDB connection
 const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
@@ -29,9 +59,8 @@ async function run() {
     const userCollection = client.db("eduecho").collection("userInfo");
     const commentCollection = client.db("eduecho").collection("articlesComments");
     const articleLikeCollection = client.db("eduecho").collection("articlesLikeInfo");
-    
 
-    // get all articles
+    // Get all articles
     app.get("/articles", async (req, res) => {
       try {
         const articles = await articlesCollection.find().toArray();
@@ -40,11 +69,6 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch articles" });
       }
     });
-
-  
-
-
-
 
     // Get likes grouped by articleId
     app.get("/articles/likes", async (req, res) => {
@@ -63,46 +87,49 @@ async function run() {
       }
     });
 
-    // get all articles comments
-
+    // Get all articles comments
     app.get("/articles/comments", async (req, res) => {
-  try {
-    const comments = await commentCollection
-      .find()
-      .sort({ timestamp: -1 }) // newest first
-      .toArray();
-    res.send(comments);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to fetch comments" });
-  }
-});
+      try {
+        const comments = await commentCollection
+          .find()
+          .sort({ timestamp: -1 }) 
+          .toArray();
+        res.send(comments);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch comments" });
+      }
+    });
 
-
-    // get my articles use email
-    app.get("/myArticles", async (req, res) => {
+    // Get my articles 
+    app.get("/myArticles", verifyJWT, async (req, res) => {
       const userEmail = req.query.email;
+
+      if (req.decoded.email !== userEmail) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
       const query = { email: userEmail };
       const result = await articlesCollection.find(query).toArray();
       res.send(result);
     });
 
-
-      // get articles specific id 
+    // Get article by ID
     app.get("/articles/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const result = await articlesCollection.findOne(filter);
       res.send(result);
     });
-      // get articles specific category 
+
+    // Get articles by category
     app.get("/articlesCategory/:catagory", async (req, res) => {
       const catagory = req.params.catagory;
-      const filter = {category : catagory};
+      const filter = { category: catagory };
       const result = await articlesCollection.find(filter).toArray();
       res.send(result);
     });
 
-    //user info collect
+    // User info collect
     app.post("/userinfo", async (req, res) => {
       const { uid, name, email, photo } = req.body;
 
@@ -128,7 +155,7 @@ async function run() {
       }
     });
 
-    // user info get
+    // Get user info
     app.get("/userinfo/:uid", async (req, res) => {
       const uid = req.params.uid;
       const user = await userCollection.findOne({ uid: uid });
@@ -139,7 +166,7 @@ async function run() {
       res.send(user);
     });
 
-    // post article
+    // Post article
     app.post("/articles", async (req, res) => {
       const postArticle = req.body;
       const newArticle = { ...postArticle, createdAt: new Date() };
@@ -147,7 +174,7 @@ async function run() {
       res.send(result);
     });
 
-    //  Toggle like/unlike functionality
+    // Toggle like/unlike functionality
     app.post("/articles/likes", async (req, res) => {
       const { articleId, userUID, userName, userEmail, userPhoto } = req.body;
 
@@ -183,25 +210,24 @@ async function run() {
       }
     });
 
-// post comments
-  app.post("/articles/comments", async (req, res) => {
-  try {
-    const comment = req.body;
-    comment.timestamp = new Date();
+    // Post comments
+    app.post("/articles/comments", async (req, res) => {
+      try {
+        const comment = req.body;
+        comment.timestamp = new Date();
 
-    if (!comment.article_id || !comment.user_id || !comment.comment) {
-      return res.status(400).send({ error: "Missing required fields" });
-    }
+        if (!comment.article_id || !comment.user_id || !comment.comment) {
+          return res.status(400).send({ error: "Missing required fields" });
+        }
 
-    const result = await commentCollection.insertOne(comment);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: "Failed to add comment" });
-  }
-});
+        const result = await commentCollection.insertOne(comment);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to add comment" });
+      }
+    });
 
-
-    //update article
+    // Update article
     app.patch("/articles/:id", async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
@@ -214,7 +240,7 @@ async function run() {
       res.send(result);
     });
 
-    // delete articles
+    // Delete article
     app.delete("/articles/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -222,12 +248,8 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
     // await client.close();
   }
 }
