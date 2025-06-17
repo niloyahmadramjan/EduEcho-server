@@ -27,9 +27,9 @@ async function run() {
     // await client.connect();
     const articlesCollection = client.db("eduecho").collection("allArticles");
     const userCollection = client.db("eduecho").collection("userInfo");
-    const articleLikeCollection = client
-      .db("eduecho")
-      .collection("articlesLikeInfo");
+    const commentCollection = client.db("eduecho").collection("articlesComments");
+    const articleLikeCollection = client.db("eduecho").collection("articlesLikeInfo");
+    
 
     // get all articles
     app.get("/articles", async (req, res) => {
@@ -40,6 +40,8 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch articles" });
       }
     });
+
+
 
     // Get likes grouped by articleId
     app.get("/articles/likes", async (req, res) => {
@@ -57,6 +59,21 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch likes" });
       }
     });
+
+    // get all articles comments
+
+    app.get("/articles/comments", async (req, res) => {
+  try {
+    const comments = await commentCollection
+      .find()
+      .sort({ timestamp: -1 }) // newest first
+      .toArray();
+    res.send(comments);
+  } catch (error) {
+    res.status(500).send({ error: "Failed to fetch comments" });
+  }
+});
+
 
     // get my articles use email
     app.get("/myArticles", async (req, res) => {
@@ -146,6 +163,24 @@ async function run() {
         return res.send({ message: "Liked", insertedId: result.insertedId });
       }
     });
+
+// post comments
+  app.post("/articles/comments", async (req, res) => {
+  try {
+    const comment = req.body;
+    comment.timestamp = new Date();
+
+    if (!comment.article_id || !comment.user_id || !comment.comment) {
+      return res.status(400).send({ error: "Missing required fields" });
+    }
+
+    const result = await commentCollection.insertOne(comment);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: "Failed to add comment" });
+  }
+});
+
 
     //update article
     app.patch("/articles/:id", async (req, res) => {
