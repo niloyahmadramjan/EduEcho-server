@@ -41,6 +41,9 @@ async function run() {
       }
     });
 
+  
+
+
 
 
     // Get likes grouped by articleId
@@ -80,6 +83,22 @@ async function run() {
       const userEmail = req.query.email;
       const query = { email: userEmail };
       const result = await articlesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+
+      // get articles specific id 
+    app.get("/articles/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await articlesCollection.findOne(filter);
+      res.send(result);
+    });
+      // get articles specific category 
+    app.get("/articlesCategory/:catagory", async (req, res) => {
+      const catagory = req.params.catagory;
+      const filter = {category : catagory};
+      const result = await articlesCollection.find(filter).toArray();
       res.send(result);
     });
 
