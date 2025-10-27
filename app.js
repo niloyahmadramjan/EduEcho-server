@@ -5,6 +5,7 @@ const articleRoutes = require("./routes/articles");
 const userRoutes = require("./routes/users");
 const likeRoutes = require("./routes/likes");
 const commentRoutes = require("./routes/comments");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/articles", articleRoutes);
 app.use("/users", userRoutes);
 app.use("/articles", likeRoutes); // Mounted under /articles
 app.use("/articles", commentRoutes); // Mounted under /articles
+app.use("/admin", adminRoutes);
 
 // Root route
 app.get("/", (req, res) => {

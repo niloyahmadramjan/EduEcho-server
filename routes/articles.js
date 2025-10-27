@@ -6,9 +6,9 @@ const {
   getMyArticles,
   createArticle,
   updateArticle,
-  deleteArticle
+  deleteArticle,
 } = require("../controllers/articleController");
-const verifyJWT = require("../middleware/auth");
+const verifyJWT = require("../middleware/verifyFirebaseToken");
 
 const router = express.Router();
 
